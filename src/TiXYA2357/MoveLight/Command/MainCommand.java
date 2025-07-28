@@ -5,7 +5,6 @@ import cn.nukkit.Player;
 import cn.nukkit.command.*;
 
 import static TiXYA2357.MoveLight.Configs.*;
-import static TiXYA2357.MoveLight.Utils.FakeBlock;
 import static TiXYA2357.MoveLight.Utils.itemToOffhand;
 
 public class MainCommand extends Command {

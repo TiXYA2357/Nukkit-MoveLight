@@ -5,12 +5,13 @@ import cn.nukkit.block.Block;
 import cn.nukkit.item.Item;
 import cn.nukkit.level.GlobalBlockPalette;
 import cn.nukkit.level.Position;
-import cn.nukkit.math.Vector3;
 import cn.nukkit.network.protocol.UpdateBlockPacket;
 import cn.nukkit.scheduler.*;
 import lombok.*;
 
 import java.util.*;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static TiXYA2357.MoveLight.Main.*;
 import static TiXYA2357.MoveLight.Configs.*;
@@ -36,14 +37,8 @@ public class Utils {
         } else p.sendActionBar(PA + "请勿手持空气");
     }
 
-    protected static HashMap<Player , List<String>> lightBlocks = new HashMap<>();
+    protected static final List<Position> lightBlocks = new CopyOnWriteArrayList<>();
 
-    public static String PosToString(Player p){
-        return p.getLevelName() + ":" + (int) p.x + ":" +  (int) (p.y + 1) + ":" + (int) p.z;
-    }
-    public static UpdateBlockPacket FakeBlock(Player p, int blockId, Position pos){
-        return FakeBlock(p, blockId, 0, pos);
-    }
 
     public static int getPlayerLightLevel(Player p){
         var offhand = p.getOffhandInventory().getItem(0);
@@ -76,7 +71,7 @@ public class Utils {
     }
 
     protected static boolean checkBlock(Block block) {
-        for (String blockStr : getIgnBlocks()) {
+        for (String blockStr : getAllowBlock()) {
              if (blockStr.equals(block.getId() + "") || blockStr.equals(block.getId() + ":" + block.getDamage())) return true;
         }
         return false;
@@ -86,7 +81,7 @@ public class Utils {
     protected static UpdateBlockPacket FakeBlock(Player p, int blockId, int meta, Position pos){
         var updateBlock = new UpdateBlockPacket();
         if (IS_PM1E) updateBlock.blockRuntimeId = GlobalBlockPalette.getOrCreateRuntimeId(p.protocol, blockId, meta);
-        else updateBlock.blockRuntimeId = GlobalBlockPalette.getOrCreateRuntimeId(blockId, 0);
+        else updateBlock.blockRuntimeId = GlobalBlockPalette.getOrCreateRuntimeId(blockId, meta);
 
         updateBlock.flags = UpdateBlockPacket.FLAG_ALL_PRIORITY;
         updateBlock.x = (int) pos.x;
@@ -94,34 +89,22 @@ public class Utils {
         updateBlock.z = (int) pos.z;
         return updateBlock;
     }
-    protected static void resSomeBlock(Player p) {
-            var list = lightBlocks.getOrDefault(p, new ArrayList<>());
-            new ArrayList<>(list).forEach(pos -> {
-            var map=pos.split(":")[0];
-            var x=pos.split(":")[1];
-            var y=pos.split(":")[2];
-            var z=pos.split(":")[3];
-            var poss = new Position(Integer.parseInt(x), Integer.parseInt(y), Integer.parseInt(z), nks.getLevelByName(map));
-            if (poss.distance(new Vector3(p.x, p.y + 1, p.z)) > 1.3 || getPlayerLightLevel(p) < 1) restoreBlock(poss);
-        });
-    }
 
-    protected static void restoreBlock(Position pos) {
-        Async(() -> {
-            Block block = nks.getLevelByName(pos.getLevelName()).getBlock(pos);
-            int blockId = block.getId();
-            int meta = block.getDamage();
-            // 发送真实方块更新数据包
-            UpdateBlockPacket restore = new UpdateBlockPacket();
-            nks.getOnlinePlayers().values().forEach(p -> {
-                if (!p.getLevelName().equals(pos.getLevelName())) return;
-                if (IS_PM1E) restore.blockRuntimeId = GlobalBlockPalette.getOrCreateRuntimeId(p.protocol, blockId, meta);
-                else restore.blockRuntimeId = GlobalBlockPalette.getOrCreateRuntimeId(blockId, 0);
-                restore.flags = UpdateBlockPacket.FLAG_ALL_PRIORITY;
-                restore.x = (int) pos.x;
-                restore.y = (int) pos.y;
-                restore.z = (int) pos.z;
-                p.dataPacket(restore);});});
+    protected static void restoreBlock() {
+        lightBlocks.removeIf(pos -> {
+            var hasp = new AtomicBoolean(false);
+            pos.getLevel().getPlayers().values().forEach(p -> {
+                if (p.distance(pos) < 1.3) hasp.set(true);
+            });
+            if (!hasp.get()) {
+                var block = pos.getLevelBlock().getBlock();
+                int blockId = block.getId();
+                int meta = block.getDamage();
+                // 发送真实方块更新数据包
+                pos.getLevel().getPlayers().values().forEach(p -> p.dataPacket(FakeBlock(p, blockId, meta, pos)));
+                return true;
+            } else return false;
+        });
     }
 
     private static boolean IS_PM1E = true;
@@ -147,13 +130,6 @@ public class Utils {
     }
 
 
-    public static boolean hasClazz(Class<?> clazz){
-        try {
-            Class.forName(clazz.getName());
-            return true;
-        } catch (ClassNotFoundException e) {
-            return false;}
-    }
     @Getter
     private static final SplittableRandom RANDOM = new SplittableRandom(System.currentTimeMillis());
 

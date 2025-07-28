@@ -2,6 +2,6 @@ name: MoveLight
 main: TiXYA2357.MoveLight.Main
 description: 移动光源
 author: TiXYA2357
-version: 1.0.0-End
+version: 1.0.5-End
 api: [1.0.0]
 load: STARTUP

@@ -30,14 +30,14 @@ public final class Configs {
     @Getter
     private static HashMap<String,Integer> lightItems= new HashMap<>();
     @Getter
-    private static List<String> ignBlocks = new ArrayList<>();
+    private static List<String> allowBlock= new ArrayList<>();
 
     public static boolean initConfig(){
         PT = getConfig("服务器名称", "§r§b移动光影 §a>>> §7");
         PA = getConfig("服务器提示", "§r§b移动光影 §a丨 §7");
         cmd = getConfig("指令", "mlh");
         lightItems = getConfig("移动光源物品", new HashMap<>());
-        ignBlocks = getConfig("忽略方块", new ArrayList<>());
+        allowBlock= getConfig("支持方块", List.of("0","8","9","10","11"));
         return true;
     }
 

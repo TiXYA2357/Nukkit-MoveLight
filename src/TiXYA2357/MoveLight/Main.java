@@ -7,7 +7,6 @@ import lombok.*;
 
 import static TiXYA2357.MoveLight.Configs.*;
 import static TiXYA2357.MoveLight.Utils.checkServer;
-import static TiXYA2357.MoveLight.Utils.hasClazz;
 
 public final class Main extends PluginBase {
     @Getter
@@ -31,7 +30,6 @@ public final class Main extends PluginBase {
         checkServer();
         this.getServer().getPluginManager().registerEvents(new EventListener(), this);
         this.getServer().getCommandMap().register(Configs.getCmd(), new MainCommand(Configs.getCmd()));
-        this.getServer().getScheduler().scheduleRepeatingTask(new RepeatTask(this), 20);
 //        getLogger().info("Plugin enabled!");
     }
     @Override
